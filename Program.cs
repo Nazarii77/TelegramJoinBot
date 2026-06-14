@@ -5,7 +5,7 @@ using Microsoft.Extensions.Configuration;
 using Telegram.Bot.Types.ReplyMarkups;
 
 var config = new ConfigurationBuilder()
-    .AddJsonFile("appsettings.json")
+    .AddJsonFile("appsettings.json", optional:true)
     .Build();
 
 var token = config["Telegram:BotToken"]!;
