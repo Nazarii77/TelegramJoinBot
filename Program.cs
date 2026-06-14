@@ -25,7 +25,7 @@ bot.StartReceiving(
     HandleError
 );
 
-Console.ReadLine();
+await Task.Delay(-1);
 
 async Task HandleUpdate(ITelegramBotClient botClient, Update update, CancellationToken ct)
 {
