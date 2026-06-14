@@ -67,7 +67,7 @@ async Task HandleUpdate(ITelegramBotClient botClient, Update update, Cancellatio
         await botClient.SendMessage(userId,
             "Привіт 👋\n\nЯ бот для подачі заявки в групу.\n\nЩоб продовжити, я поставлю 3 простих питання 🙂");
 
-        await botClient.SendMessage(userId, "Як тебе звати?");
+        await botClient.SendMessage(userId, "Як вас звати?");
         return;
     }
 
@@ -80,13 +80,13 @@ async Task HandleUpdate(ITelegramBotClient botClient, Update update, Cancellatio
     {
         state.Name = text;
 
-        await botClient.SendMessage(userId, "Із якої ти квартири/комерції? (кілька - через кому, якщо немає - 0)");
+        await botClient.SendMessage(userId, "Вкажіть, будь ласка, номер квартири? (кілька - через кому, якщо немає - 0)");
         return;
     }
     else if (string.IsNullOrEmpty(state.Flat))
     {
         state.Flat = text;
-        await botClient.SendMessage(userId, "Чи маєш паркомісце? (кілька - через кому, якщо немає - 0)");
+        await botClient.SendMessage(userId, "Вкажіть, будь ласка, номер паркомісця? (кілька - через кому, якщо немає - 0)");
         return;
     }
     else if (string.IsNullOrEmpty(state.Parking))
