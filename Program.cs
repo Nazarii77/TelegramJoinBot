@@ -10,6 +10,10 @@ var config = new ConfigurationBuilder()
     .AddEnvironmentVariables()
     .Build();
 
+Console.WriteLine(
+    "Token exists=" + 
+    (!string.IsNullOrEmpty(config["Telegram:BotToken"]))
+);
 var token = config["Telegram:BotToken"]!;
 var adminId = long.Parse(config["Telegram:AdminId"]!);
 
