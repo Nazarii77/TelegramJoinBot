@@ -54,11 +54,11 @@ async Task HandleUpdate(ITelegramBotClient botClient, Update update, Cancellatio
         return;
     }
         // 🔹 MESSAGE
-    if (update.Message is not { } msg) return;
-    if (msg.Text is null) return;
+    if (update.Message is not { } msg)
+        return;
 
     var userId = msg.From!.Id;
-    var text = msg.Text;
+    var text = msg.Text ?? "";
 
     if (text.StartsWith("/start"))
     {
@@ -90,8 +90,19 @@ async Task HandleUpdate(ITelegramBotClient botClient, Update update, Cancellatio
         return;
     }
     else if (string.IsNullOrEmpty(state.Parking))
-    {
+    {  Console.WriteLine("parking RECEIVED");
         state.Parking = text;
+        await botClient.SendMessage(
+            userId,
+            "Додайте фото документа власності або скріншот оплати комуналки для підтвердження:"
+        );
+        return;
+    } 
+
+    // Фото
+    if (msg.Photo != null)
+    {  
+        Console.WriteLine("PHOTO RECEIVED");
         var keyboard = new InlineKeyboardMarkup(
             InlineKeyboardButton.WithUrl(
                 "📩 Подати заявку",
@@ -99,12 +110,19 @@ async Task HandleUpdate(ITelegramBotClient botClient, Update update, Cancellatio
             )
         );
 
+        var photo = msg.Photo.Last();
+        state.PhotoId = photo.FileId;
+
+        await botClient.SendMessage(
+            userId,
+            "Фото отримано ✅"
+        );
+        
         await botClient.SendMessage(
                 userId,
                 "Дані заповнено ✅\nНатисніть кнопку, щоб подати заявку у групу:",
                 replyMarkup: keyboard
         );
-
         var adminKeyboard = new InlineKeyboardMarkup(
             new[]
             {
@@ -122,14 +140,21 @@ async Task HandleUpdate(ITelegramBotClient botClient, Update update, Cancellatio
             }
         );
 
-        await botClient.SendMessage(
+        await botClient.SendPhoto(
             adminId,
-            $"📩 Нова заявка:\n\n👤 Ім'я: {state.Name}\n📝 Квартира: {state.Flat}\nℹ️ Паркомісце: {state.Parking}\n🆔 ID: {userId}",
-            replyMarkup: adminKeyboard
+            state.PhotoId,
+            caption:
+            $"📩 Нова заявка:\n\n" +
+            $"👤 Ім'я: {state.Name}\n" +
+            $"🏠 Квартира: {state.Flat}\n" +
+            $"🚗 Паркомісце: {state.Parking}\n" +
+            $"🆔 ID: {userId}",
+             replyMarkup: adminKeyboard
         );
-        
 
-        users.Remove(userId);
+      //  users.Remove(userId);
+
+        return;
     }
 }
 
@@ -144,4 +169,5 @@ class UserState
     public string Name { get; set; } = "";
     public string Flat { get; set; } = "";
     public string Parking { get; set; } = "";
+    public string PhotoId { get; set; } = "";
 }
