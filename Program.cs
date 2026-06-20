@@ -163,6 +163,7 @@ async Task HandleUpdate(ITelegramBotClient botClient, Update update, Cancellatio
             $"👤 Ім'я: {state.Name}\n" +
             $"🏠 Квартира: {state.Flat}\n" +
             $"🚗 Паркомісце: {state.Parking}\n" +
+            $"📱 Телефон: {state.Phone}\n" +
             $"🆔 ID: {userId}",
              replyMarkup: adminKeyboard
         );
