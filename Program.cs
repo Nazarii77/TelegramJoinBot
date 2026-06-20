@@ -94,8 +94,19 @@ async Task HandleUpdate(ITelegramBotClient botClient, Update update, Cancellatio
         return;
     }
     else if (string.IsNullOrEmpty(state.Parking))
-    {  Console.WriteLine("parking RECEIVED");
+    {  
+        Console.WriteLine("parking RECEIVED");
         state.Parking = text;
+        await botClient.SendMessage(
+            userId,
+            "Вкажіть номер телефону на випадок надзвичайних ситуацій:"
+        );
+        return;
+    }     
+    else if (string.IsNullOrEmpty(state.Phone))
+    {  
+        Console.WriteLine("phone RECEIVED");
+        state.Phone = text;
         await botClient.SendMessage(
             userId,
             "Додайте фото документа власності або скріншот оплати комуналки для підтвердження:"
@@ -173,5 +184,6 @@ class UserState
     public string Name { get; set; } = "";
     public string Flat { get; set; } = "";
     public string Parking { get; set; } = "";
+    public string Phone { get; set; } = "";
     public string PhotoId { get; set; } = "";
 }
