@@ -15,7 +15,10 @@ Console.WriteLine(
     (!string.IsNullOrEmpty(config["Telegram:BotToken"]))
 );
 var token = config["Telegram:BotToken"]!;
-var adminId = long.Parse(config["Telegram:AdminId"]!);
+var adminIds = config["Telegram:AdminId"]!
+    .Split(',')
+    .Select(id => long.Parse(id.Trim()))
+    .ToList();
 
 var bot = new TelegramBotClient(token);
 
@@ -155,18 +158,21 @@ async Task HandleUpdate(ITelegramBotClient botClient, Update update, Cancellatio
             }
         );
 
-        await botClient.SendPhoto(
-            adminId,
-            state.PhotoId,
-            caption:
-            $"📩 Нова заявка:\n\n" +
-            $"👤 Ім'я: {state.Name}\n" +
-            $"🏠 Квартира: {state.Flat}\n" +
-            $"🚗 Паркомісце: {state.Parking}\n" +
-            $"📱 Телефон: {state.Phone}\n" +
-            $"🆔 ID: {userId}",
-             replyMarkup: adminKeyboard
-        );
+        foreach (var adminId in adminIds)
+        {
+            await botClient.SendPhoto(
+                adminId,
+                state.PhotoId,
+                caption:
+                $"📩 Нова заявка:\n\n" +
+                $"👤 Ім'я: {state.Name}\n" +
+                $"🏠 Квартира: {state.Flat}\n" +
+                $"🚗 Паркомісце: {state.Parking}\n" +
+                $"📱 Телефон: {state.Phone}\n" +
+                $"🆔 ID: {userId}",
+                 replyMarkup: adminKeyboard
+            );
+        }
 
       //  users.Remove(userId);
 
