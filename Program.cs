@@ -4,6 +4,7 @@ using Telegram.Bot.Types;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Configuration.EnvironmentVariables;
 using Telegram.Bot.Types.ReplyMarkups;
+using Telegram.Bot.Types.Enums;
 
 var config = new ConfigurationBuilder()
     .AddJsonFile("appsettings.json", optional:true)
@@ -62,6 +63,9 @@ async Task HandleUpdate(ITelegramBotClient botClient, Update update, Cancellatio
     }
         // 🔹 MESSAGE
     if (update.Message is not { } msg)
+        return;
+        
+    if (msg.Chat.Type != ChatType.Private)
         return;
 
     var userId = msg.From!.Id;
