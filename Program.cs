@@ -1,4 +1,4 @@
-﻿using Telegram.Bot;
+using Telegram.Bot;
 using Telegram.Bot.Types;
 
 using Microsoft.Extensions.Configuration;
@@ -73,7 +73,10 @@ async Task HandleUpdate(ITelegramBotClient botClient, Update update, Cancellatio
 
     if (text.StartsWith("/start"))
     {
-        users[userId] = new UserState();
+        users[userId] = new UserState
+        {
+            Username = msg.From!.Username ?? ""
+        };
 
         await botClient.SendMessage(userId,
             "Привіт 👋\n\nЯ бот для подачі заявки в групу.\n\nЩоб продовжити, я поставлю 3 простих питання 🙂");
@@ -162,6 +165,16 @@ async Task HandleUpdate(ITelegramBotClient botClient, Update update, Cancellatio
             }
         );
 
+        // Клікабельне посилання на профіль кандидата.
+        // tg://user?id= відкриває профіль навіть якщо немає username.
+        var safeName = System.Net.WebUtility.HtmlEncode(
+            string.IsNullOrWhiteSpace(state.Name) ? "Профіль кандидата" : state.Name
+        );
+        var profileLink = $"<a href=\"tg://user?id={userId}\">{safeName}</a>";
+        var usernameLine = string.IsNullOrWhiteSpace(state.Username)
+            ? ""
+            : $"🔗 Username: @{System.Net.WebUtility.HtmlEncode(state.Username)}\n";
+
         foreach (var adminId in adminIds)
         {
             await botClient.SendPhoto(
@@ -169,12 +182,14 @@ async Task HandleUpdate(ITelegramBotClient botClient, Update update, Cancellatio
                 state.PhotoId,
                 caption:
                 $"📩 Нова заявка:\n\n" +
-                $"👤 Ім'я: {state.Name}\n" +
-                $"🏠 Квартира: {state.Flat}\n" +
-                $"🚗 Паркомісце: {state.Parking}\n" +
-                $"📱 Телефон: {state.Phone}\n" +
+                $"👤 Ім'я: {profileLink}\n" +
+                usernameLine +
+                $"🏠 Квартира: {System.Net.WebUtility.HtmlEncode(state.Flat)}\n" +
+                $"🚗 Паркомісце: {System.Net.WebUtility.HtmlEncode(state.Parking)}\n" +
+                $"📱 Телефон: {System.Net.WebUtility.HtmlEncode(state.Phone)}\n" +
                 $"🆔 ID: {userId}",
-                 replyMarkup: adminKeyboard
+                parseMode: ParseMode.Html,
+                replyMarkup: adminKeyboard
             );
         }
 
@@ -197,4 +212,5 @@ class UserState
     public string Parking { get; set; } = "";
     public string Phone { get; set; } = "";
     public string PhotoId { get; set; } = "";
+    public string Username { get; set; } = "";
 }
