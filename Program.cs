@@ -173,8 +173,10 @@ async Task HandleUpdate(ITelegramBotClient botClient, Update update, Cancellatio
                 $"🏠 Квартира: {state.Flat}\n" +
                 $"🚗 Паркомісце: {state.Parking}\n" +
                 $"📱 Телефон: {state.Phone}\n" +
-                $"🆔 ID: {userId}",
-                 replyMarkup: adminKeyboard
+                $"🆔 ID: {userId}\n" +
+                $"🔗 <a href=\"tg://user?id={userId}\">Відкрити профіль</a>",
+                parseMode: ParseMode.Html,
+                replyMarkup: adminKeyboard
             );
         }
 
