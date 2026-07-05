@@ -158,6 +158,13 @@ async Task HandleUpdate(ITelegramBotClient botClient, Update update, Cancellatio
                         "❌ Відхилити",
                         $"form_reject_{userId}"
                     )
+                },
+                new []
+                {
+                    InlineKeyboardButton.WithUrl(
+                        "👤 Відкрити профіль",
+                        $"tg://user?id={userId}"
+                    )
                 }
             }
         );
@@ -173,8 +180,7 @@ async Task HandleUpdate(ITelegramBotClient botClient, Update update, Cancellatio
                 $"🏠 Квартира: {state.Flat}\n" +
                 $"🚗 Паркомісце: {state.Parking}\n" +
                 $"📱 Телефон: {state.Phone}\n" +
-                $"🆔 ID: {userId}\n" +
-                $"🔗 <a href=\"tg://user?id={userId}\">Відкрити профіль</a>",
+                $"🆔 ID: {userId}",
                 parseMode: ParseMode.Html,
                 replyMarkup: adminKeyboard
             );
