@@ -142,6 +142,7 @@ async Task HandleUpdateAsync(ITelegramBotClient botClient, Update update, Cancel
                     $"🏠 Квартира: {stateToSend.Flat}\n" +
                     $"🚗 Паркомісце: {stateToSend.Parking}\n" +
                     $"📱 Телефон: {stateToSend.Phone}\n" +
+                    $"🕒 Час подачі: {DateTime.UtcNow.AddHours(3):dd.MM.yyyy HH:mm:ss}\n" +
                     $"🆔 ID: {userIdBtn}",
                     parseMode: ParseMode.Html,
                     replyMarkup: adminKeyboard
