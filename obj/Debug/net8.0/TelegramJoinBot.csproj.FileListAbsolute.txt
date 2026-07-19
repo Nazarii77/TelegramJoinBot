@@ -30,3 +30,5 @@ C:\Users\boich\TelegramJoinBot\obj\Debug\net8.0\refint\TelegramJoinBot.dll
 C:\Users\boich\TelegramJoinBot\obj\Debug\net8.0\TelegramJoinBot.pdb
 C:\Users\boich\TelegramJoinBot\obj\Debug\net8.0\TelegramJoinBot.genruntimeconfig.cache
 C:\Users\boich\TelegramJoinBot\obj\Debug\net8.0\ref\TelegramJoinBot.dll
+C:\Users\boich\TelegramJoinBot\bin\Debug\net8.0\Microsoft.Extensions.Configuration.EnvironmentVariables.dll
+C:\Users\boich\TelegramJoinBot\obj\Debug\net8.0\TelegramJoinBot.sourcelink.json

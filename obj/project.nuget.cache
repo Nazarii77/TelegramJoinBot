@@ -1,11 +1,12 @@
 {
   "version": 2,
-  "dgSpecHash": "O88ls8s2Yp4=",
+  "dgSpecHash": "DML/wbmMtYI=",
   "success": true,
   "projectFilePath": "C:\\Users\\boich\\TelegramJoinBot\\TelegramJoinBot.csproj",
   "expectedPackageFiles": [
     "C:\\Users\\boich\\.nuget\\packages\\microsoft.extensions.configuration\\10.0.9\\microsoft.extensions.configuration.10.0.9.nupkg.sha512",
     "C:\\Users\\boich\\.nuget\\packages\\microsoft.extensions.configuration.abstractions\\10.0.9\\microsoft.extensions.configuration.abstractions.10.0.9.nupkg.sha512",
+    "C:\\Users\\boich\\.nuget\\packages\\microsoft.extensions.configuration.environmentvariables\\10.0.9\\microsoft.extensions.configuration.environmentvariables.10.0.9.nupkg.sha512",
     "C:\\Users\\boich\\.nuget\\packages\\microsoft.extensions.configuration.fileextensions\\10.0.9\\microsoft.extensions.configuration.fileextensions.10.0.9.nupkg.sha512",
     "C:\\Users\\boich\\.nuget\\packages\\microsoft.extensions.configuration.json\\10.0.9\\microsoft.extensions.configuration.json.10.0.9.nupkg.sha512",
     "C:\\Users\\boich\\.nuget\\packages\\microsoft.extensions.dependencyinjection.abstractions\\8.0.0\\microsoft.extensions.dependencyinjection.abstractions.8.0.0.nupkg.sha512",
