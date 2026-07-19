@@ -1,4 +1,5 @@
 ﻿using System.Collections.Concurrent;
+using System.Runtime.InteropServices;
 using Microsoft.Extensions.Configuration;
 using Telegram.Bot;
 using Telegram.Bot.Polling;
@@ -53,9 +54,23 @@ botClient.StartReceiving(
     receiverOptions: new ReceiverOptions { AllowedUpdates = [] },
     cancellationToken: cts.Token);
 
-Console.WriteLine("Bot is running. Press Enter to stop.");
-Console.ReadLine();
+Console.WriteLine("Bot is running.");
+
+var shutdownTcs = new TaskCompletionSource();
+using var sigTerm = PosixSignalRegistration.Create(PosixSignal.SIGTERM, ctx =>
+{
+    ctx.Cancel = true;
+    shutdownTcs.TrySetResult();
+});
+using var sigInt = PosixSignalRegistration.Create(PosixSignal.SIGINT, ctx =>
+{
+    ctx.Cancel = true;
+    shutdownTcs.TrySetResult();
+});
+
+await shutdownTcs.Task;
 cts.Cancel();
+Console.WriteLine("Stopping...");
 
 async Task HandleUpdateAsync(ITelegramBotClient botClient, Update update, CancellationToken cancellationToken)
 {
