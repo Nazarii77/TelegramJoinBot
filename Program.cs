@@ -44,14 +44,22 @@ if (string.IsNullOrWhiteSpace(botToken) || adminChatIds.Count == 0)
 
 var botClient = new TelegramBotClient(botToken);
 var me = await botClient.GetMe();
+var groupChat = await botClient.GetChat(new ChatId(groupId));
+var groupPublicLink = !string.IsNullOrWhiteSpace(groupChat.Username)
+    ? $"https://t.me/{groupChat.Username}"
+    : null;
 Console.WriteLine($"Bot started: {me.Username}");
+Console.WriteLine($"Group: {groupChat.Title} ({groupChat.Id}) Username={groupChat.Username ?? "<none>"}");
 
 using var cts = new CancellationTokenSource();
 
 botClient.StartReceiving(
     updateHandler: HandleUpdateAsync,
     errorHandler: HandlePollingErrorAsync,
-    receiverOptions: new ReceiverOptions { AllowedUpdates = [] },
+    receiverOptions: new ReceiverOptions
+    {
+        AllowedUpdates = new[] { UpdateType.Message, UpdateType.CallbackQuery, UpdateType.ChatJoinRequest }
+    },
     cancellationToken: cts.Token);
 
 Console.WriteLine("Bot is running.");
@@ -74,6 +82,78 @@ Console.WriteLine("Stopping...");
 
 async Task HandleUpdateAsync(ITelegramBotClient botClient, Update update, CancellationToken cancellationToken)
 {
+    if (update.ChatJoinRequest is { } joinRequest)
+    {
+        if (joinRequest.Chat.Id != groupId)
+            return;
+
+        var requesterId = joinRequest.From.Id;
+        var joinState = users.ContainsKey(requesterId) ? users[requesterId] : null;
+        var requestTime = DateTime.UtcNow.AddHours(3);
+
+        var adminButtons = new List<IEnumerable<InlineKeyboardButton>>
+        {
+            new[]
+            {
+                InlineKeyboardButton.WithCallbackData(
+                    "✅ Схвалити",
+                    $"form_accept_{requesterId}"
+                ),
+                InlineKeyboardButton.WithCallbackData(
+                    "❌ Відхилити",
+                    $"form_reject_{requesterId}"
+                )
+            }
+        };
+
+        var profileUrl = !string.IsNullOrWhiteSpace(joinState?.Username)
+            ? $"https://t.me/{joinState.Username}"
+            : $"tg://user?id={requesterId}";
+
+        adminButtons.Add(new[]
+        {
+            InlineKeyboardButton.WithUrl(
+                "👤 Відкрити профіль",
+                profileUrl
+            )
+        });
+
+        var caption = joinState is not null
+            ? $"📩 Нова заявка на приєднання:\n\n" +
+              $"👤 Ім'я: {joinState.Name}\n" +
+              $"🏠 Квартира: {joinState.Flat}\n" +
+              $"🚗 Паркомісце: {joinState.Parking}\n" +
+              $"📱 Телефон: {joinState.Phone}\n" +
+              $"🆔 ID: {requesterId}\n" +
+              $"Час подачі: {requestTime:dd.MM.yyyy HH:mm:ss}"
+            : $"📩 Нова заявка на приєднання від користувача {requesterId}. Дані анкети відсутні.\n";
+
+        foreach (var adminId in adminChatIds)
+        {
+            if (joinState is not null && !string.IsNullOrWhiteSpace(joinState.PhotoId))
+            {
+                await botClient.SendPhoto(
+                    adminId,
+                    joinState.PhotoId,
+                    caption: caption,
+                    parseMode: ParseMode.Html,
+                    replyMarkup: new InlineKeyboardMarkup(adminButtons)
+                );
+            }
+            else
+            {
+                await botClient.SendMessage(
+                    adminId,
+                    caption,
+                    parseMode: ParseMode.Html,
+                    replyMarkup: new InlineKeyboardMarkup(adminButtons)
+                );
+            }
+        }
+
+        await botClient.SendMessage(requesterId, "Ваша заявка на приєднання отримана. Очікуйте рішення адміністрації.");
+        return;
+    }
 
     // 🔹 CALLBACK КНОПКИ
     if (update.CallbackQuery is { } callback)
@@ -89,95 +169,64 @@ async Task HandleUpdateAsync(ITelegramBotClient botClient, Update update, Cancel
             return;
         }
 
-        if (data.StartsWith("submit_"))
+        var parts = data.Split('_');
+        if (!long.TryParse(parts[parts.Length - 1], out var targetId))
         {
-            var partsS = data.Split('_');
-            var userIdBtn = long.Parse(partsS[partsS.Length - 1]);
-
-            if (!users.ContainsKey(userIdBtn))
-            {
-                await botClient.AnswerCallbackQuery(callback.Id, "Помилка: сесія не знайдена.");
-                return;
-            }
-
-            var stateToSend = users[userIdBtn];
-            var profileUrl = $"tg://user?id={userIdBtn}";
-            if (!string.IsNullOrWhiteSpace(stateToSend.Username))
-            {
-                profileUrl = $"https://t.me/{stateToSend.Username}";
-            }
-
-            var adminKeyboard = new InlineKeyboardMarkup(
-                new[]
-                {
-                    new []
-                    {
-                        InlineKeyboardButton.WithCallbackData(
-                            "✅ Схвалити",
-                            $"form_accept_{userIdBtn}"
-                        ),
-                        InlineKeyboardButton.WithCallbackData(
-                            "❌ Відхилити",
-                            $"form_reject_{userIdBtn}"
-                        )
-                    },
-                    new []
-                    {
-                        InlineKeyboardButton.WithUrl(
-                            "👤 Відкрити профіль",
-                            profileUrl
-                        )
-                    }
-                }
-            );
-
-            foreach (var adminId in adminChatIds)
-            {
-                await botClient.SendPhoto(
-                    adminId,
-                    stateToSend.PhotoId,
-                    caption:
-                    $"📩 Нова заявка:\n\n" +
-                    $"👤 Ім'я: {stateToSend.Name}\n" +
-                    $"🏠 Квартира: {stateToSend.Flat}\n" +
-                    $"🚗 Паркомісце: {stateToSend.Parking}\n" +
-                    $"📱 Телефон: {stateToSend.Phone}\n" +
-                    $"🕒 Час подачі: {DateTime.UtcNow.AddHours(3):dd.MM.yyyy HH:mm:ss}\n" +
-                    $"🆔 ID: {userIdBtn}",
-                    parseMode: ParseMode.Html,
-                    replyMarkup: adminKeyboard
-                );
-            }
-
-            await botClient.AnswerCallbackQuery(callback.Id, "Заявка відправлена адміністрації");
-            var userConfirmKeyboard = new InlineKeyboardMarkup(new[]
-            {
-                new[] { InlineKeyboardButton.WithCallbackData("🔁 Restart", "restart") }
-            });
-            await botClient.SendMessage(userIdBtn, "Ваша заявка відправлена адміністрації. Очікуйте на відповідь.", replyMarkup: userConfirmKeyboard);
-            
+            Console.WriteLine($"Invalid form callback target id: {data}");
+            await botClient.AnswerCallbackQuery(callback.Id, "Помилка: невірний формат ідентифікатора.");
             return;
         }
 
-        var parts = data.Split('_');
-        var targetId = long.Parse(parts[parts.Length - 1]);
+        Console.WriteLine($"Form callback received: {data}, targetId={targetId}");
 
         if (data.StartsWith("form_accept"))
         {
-            await botClient.ApproveChatJoinRequest(
-                new ChatId(groupId),
-                targetId
-            );
-            await botClient.SendMessage(targetId, "✅ Ваша заявка схвалена адміністрацією!");
-            await botClient.AnswerCallbackQuery(callback.Id, "Заявка схвалена");
-            // Remove user's session only after admin action
+            try
+            {
+                await botClient.ApproveChatJoinRequest(
+                    new ChatId(groupId),
+                    targetId
+                );
+
+                await botClient.SendMessage(targetId, "✅ Ваша заявка схвалена адміністрацією!");
+                await botClient.AnswerCallbackQuery(callback.Id, "Заявка схвалена");
+            }
+            catch (Telegram.Bot.Exceptions.ApiRequestException ex)
+            {
+                Console.WriteLine($"Approval error for {targetId}: {ex.Message}");
+                await LogBotAdminStatusAsync(botClient, groupId, cancellationToken);
+
+                try
+                {
+                    var targetMember = await botClient.GetChatMember(new ChatId(groupId), targetId, cancellationToken);
+                    Console.WriteLine($"Target user chat member status: {targetMember.Status}");
+                    await botClient.AnswerCallbackQuery(callback.Id, $"Помилка при схваленні: {ex.Message}. Статус користувача: {targetMember.Status}.");
+                }
+                catch (Exception innerEx)
+                {
+                    Console.WriteLine($"Failed to get target chat member status: {innerEx.Message}");
+                    await botClient.AnswerCallbackQuery(callback.Id, $"Помилка при схваленні: {ex.Message}.");
+                }
+
+                await botClient.SendMessage(targetId, "⚠️ Сталася помилка під час обробки заявки. Адміністратор отримав повідомлення.");
+                return;
+            }
+
             if (users.ContainsKey(targetId)) users.Remove(targetId);
         }
         else if (data.StartsWith("form_reject"))
         {
+            try
+            {
+                await botClient.DeclineChatJoinRequest(new ChatId(groupId), targetId);
+            }
+            catch (Telegram.Bot.Exceptions.ApiRequestException ex)
+            {
+                Console.WriteLine($"Decline error for {targetId}: {ex.Message}");
+            }
+
             await botClient.SendMessage(targetId, "❌ На жаль, ваша заявка відхилена адміністрацією.");
             await botClient.AnswerCallbackQuery(callback.Id, "Заявка відхилена");
-            // Remove user's session only after admin action
             if (users.ContainsKey(targetId)) users.Remove(targetId);
         }
 
@@ -224,7 +273,7 @@ async Task HandleUpdateAsync(ITelegramBotClient botClient, Update update, Cancel
     }
     else if (string.IsNullOrEmpty(state.Parking))
     {  
-        Console.WriteLine("parking RECEIVED");
+        Console.WriteLine("PARKING RECEIVED");
         state.Parking = text;
         await botClient.SendMessage(
             userId,
@@ -234,11 +283,11 @@ async Task HandleUpdateAsync(ITelegramBotClient botClient, Update update, Cancel
     }     
     else if (string.IsNullOrEmpty(state.Phone))
     {  
-        Console.WriteLine("phone RECEIVED");
+        Console.WriteLine("PHONE RECEIVED");
         state.Phone = text;
         await botClient.SendMessage(
             userId,
-            "Додайте фото документа власності або скріншот оплати комуналки для підтвердження:"
+            "Додайте фото документа власності або скріншот оплати комуналки для підтвердження (не pdf, не word, а фото):"
         );
         return;
     } 
@@ -247,31 +296,95 @@ async Task HandleUpdateAsync(ITelegramBotClient botClient, Update update, Cancel
     if (msg.Photo != null)
     {  
         Console.WriteLine("PHOTO RECEIVED");
-        var keyboard = new InlineKeyboardMarkup(new[]
-        {
-            new[]
-            {
-                InlineKeyboardButton.WithCallbackData(
-                    "📩 Подати заявку",
-                    $"submit_{userId}"
-                )
-            }
-        });
-
         var photo = msg.Photo.Last();
         state.PhotoId = photo.FileId;
-        // store username for later admin notification
         state.Username = msg.From?.Username ?? string.Empty;
 
-        // Do not notify admins here — wait for the user to press Submit.
-        await botClient.SendMessage(userId, "Фото отримано ✅");
-        await botClient.SendMessage(
-            userId,
-            "Дані заповнено ✅\nНатисніть кнопку, щоб подати заявку у групу:",
-            replyMarkup: keyboard
-        );
+        string? joinUrl = groupPublicLink;
+        if (string.IsNullOrWhiteSpace(joinUrl))
+        {
+            try
+            {
+                var invite = await botClient.CreateChatInviteLink(
+                    new ChatId(groupId),
+                    name: "Заявка через бота",
+                    expireDate: DateTime.UtcNow.AddHours(2),
+                    createsJoinRequest: true,
+                    cancellationToken: cancellationToken);
+                joinUrl = invite.InviteLink;
+            }
+            catch (Telegram.Bot.Exceptions.ApiRequestException ex)
+            {
+                Console.WriteLine($"Failed to create join invite link: {ex.Message}");
+            }
+        }
+
+        if (!string.IsNullOrWhiteSpace(joinUrl))
+        {
+            var keyboard = new InlineKeyboardMarkup(new[]
+            {
+                new[]
+                {
+                    InlineKeyboardButton.WithUrl(
+                        "📩 Подати заявку в групу",
+                        joinUrl)
+                },
+                new[]
+                {
+                    InlineKeyboardButton.WithCallbackData(
+                        "🔄 Почати заново",
+                        "restart")
+                }
+            });
+
+            await botClient.SendMessage(
+                userId,
+                "Натисніть кнопку нижче, щоб перейти у групу та подати запит на приєднання.",
+                replyMarkup: keyboard
+            );
+        }
+        else
+        {
+            var keyboard = new InlineKeyboardMarkup(new[]
+            {
+                new[]
+                {
+                    InlineKeyboardButton.WithCallbackData(
+                        "🔄 Почати заново",
+                        "restart")
+                }
+            });
+
+            await botClient.SendMessage(
+                userId,
+                "Дані збережено. Будь ласка, перейдіть у групу та подайте заявку на приєднання. Після цього адміністратор зможе її схвалити.",
+                replyMarkup: keyboard
+            );
+        }
 
         return;
+    }
+}
+
+async Task LogBotAdminStatusAsync(ITelegramBotClient botClient, long groupId, CancellationToken cancellationToken)
+{
+    try
+    {
+        var me = await botClient.GetMe(cancellationToken);
+        var member = await botClient.GetChatMember(new ChatId(groupId), me.Id, cancellationToken);
+        Console.WriteLine($"Bot chat member status: {member.Status}");
+        if (member.Status == Telegram.Bot.Types.Enums.ChatMemberStatus.Administrator)
+        {
+            Console.WriteLine("Bot is admin in the group. Ensure the bot has CanInviteUsers administrator right.");
+        }
+        else
+        {
+            Console.WriteLine($"Bot is not admin or does not have sufficient rights in group {groupId}.");
+        }
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"Failed to read bot admin status: {ex.Message}");
     }
 }
 
