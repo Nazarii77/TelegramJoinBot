@@ -130,15 +130,28 @@ async Task HandleUpdateAsync(ITelegramBotClient botClient, Update update, Cancel
 
         foreach (var adminId in adminChatIds)
         {
-            if (joinState is not null && !string.IsNullOrWhiteSpace(joinState.PhotoId))
+            if (joinState is not null && !string.IsNullOrWhiteSpace(joinState.AttachmentFileId))
             {
-                await botClient.SendPhoto(
-                    adminId,
-                    joinState.PhotoId,
-                    caption: caption,
-                    parseMode: ParseMode.Html,
-                    replyMarkup: new InlineKeyboardMarkup(adminButtons)
-                );
+                if (joinState.AttachmentType == "document")
+                {
+                    await botClient.SendDocument(
+                        adminId,
+                        joinState.AttachmentFileId,
+                        caption: caption,
+                        parseMode: ParseMode.Html,
+                        replyMarkup: new InlineKeyboardMarkup(adminButtons)
+                    );
+                }
+                else
+                {
+                    await botClient.SendPhoto(
+                        adminId,
+                        joinState.AttachmentFileId,
+                        caption: caption,
+                        parseMode: ParseMode.Html,
+                        replyMarkup: new InlineKeyboardMarkup(adminButtons)
+                    );
+                }
             }
             else
             {
@@ -292,12 +305,85 @@ async Task HandleUpdateAsync(ITelegramBotClient botClient, Update update, Cancel
         return;
     } 
 
-    // Фото
+    // Фото або зображення, надіслане як файл
     if (msg.Photo != null)
     {  
         Console.WriteLine("PHOTO RECEIVED");
         var photo = msg.Photo.Last();
-        state.PhotoId = photo.FileId;
+        state.AttachmentFileId = photo.FileId;
+        state.AttachmentType = "photo";
+        state.Username = msg.From?.Username ?? string.Empty;
+
+        string? joinUrl = groupPublicLink;
+        if (string.IsNullOrWhiteSpace(joinUrl))
+        {
+            try
+            {
+                var invite = await botClient.CreateChatInviteLink(
+                    new ChatId(groupId),
+                    name: "Заявка через бота",
+                    expireDate: DateTime.UtcNow.AddHours(2),
+                    createsJoinRequest: true,
+                    cancellationToken: cancellationToken);
+                joinUrl = invite.InviteLink;
+            }
+            catch (Telegram.Bot.Exceptions.ApiRequestException ex)
+            {
+                Console.WriteLine($"Failed to create join invite link: {ex.Message}");
+            }
+        }
+
+        if (!string.IsNullOrWhiteSpace(joinUrl))
+        {
+            var keyboard = new InlineKeyboardMarkup(new[]
+            {
+                new[]
+                {
+                    InlineKeyboardButton.WithUrl(
+                        "📩 Подати заявку в групу",
+                        joinUrl)
+                },
+                new[]
+                {
+                    InlineKeyboardButton.WithCallbackData(
+                        "🔄 Почати заново",
+                        "restart")
+                }
+            });
+
+            await botClient.SendMessage(
+                userId,
+                "Натисніть кнопку нижче, щоб перейти у групу та подати запит на приєднання.",
+                replyMarkup: keyboard
+            );
+        }
+        else
+        {
+            var keyboard = new InlineKeyboardMarkup(new[]
+            {
+                new[]
+                {
+                    InlineKeyboardButton.WithCallbackData(
+                        "🔄 Почати заново",
+                        "restart")
+                }
+            });
+
+            await botClient.SendMessage(
+                userId,
+                "Дані збережено. Будь ласка, перейдіть у групу та подайте заявку на приєднання. Після цього адміністратор зможе її схвалити.",
+                replyMarkup: keyboard
+            );
+        }
+
+        return;
+    }
+
+    if (msg.Document != null && IsImageDocument(msg.Document))
+    {
+        Console.WriteLine("IMAGE DOCUMENT RECEIVED");
+        state.AttachmentFileId = msg.Document.FileId;
+        state.AttachmentType = "document";
         state.Username = msg.From?.Username ?? string.Empty;
 
         string? joinUrl = groupPublicLink;
@@ -366,6 +452,11 @@ async Task HandleUpdateAsync(ITelegramBotClient botClient, Update update, Cancel
     }
 }
 
+static bool IsImageDocument(Telegram.Bot.Types.Document? document)
+{
+    return document?.MimeType?.StartsWith("image/", StringComparison.OrdinalIgnoreCase) == true;
+}
+
 async Task LogBotAdminStatusAsync(ITelegramBotClient botClient, long groupId, CancellationToken cancellationToken)
 {
     try
@@ -399,6 +490,7 @@ class UserState
     public string Flat { get; set; } = "";
     public string Parking { get; set; } = "";
     public string Phone { get; set; } = "";
-    public string PhotoId { get; set; } = "";
+    public string AttachmentFileId { get; set; } = "";
+    public string AttachmentType { get; set; } = "";
     public string Username { get; set; } = "";
 }
