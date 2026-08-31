@@ -107,16 +107,19 @@ async Task HandleUpdateAsync(ITelegramBotClient botClient, Update update, Cancel
         };
 
         var profileUrl = !string.IsNullOrWhiteSpace(joinState?.Username)
-            ? $"https://t.me/{joinState.Username}"
-            : $"tg://user?id={requesterId}";
+            ? $"https://t.me/{joinState.Username.TrimStart('@')}"
+            : null;
 
-        adminButtons.Add(new[]
+        if (!string.IsNullOrWhiteSpace(profileUrl))
         {
-            InlineKeyboardButton.WithUrl(
-                "👤 Відкрити профіль",
-                profileUrl
-            )
-        });
+            adminButtons.Add(new[]
+            {
+                InlineKeyboardButton.WithUrl(
+                    "👤 Відкрити профіль",
+                    profileUrl
+                )
+            });
+        }
 
         var caption = joinState is not null
             ? $"📩 Нова заявка на приєднання:\n\n" +
@@ -180,6 +183,16 @@ async Task HandleUpdateAsync(ITelegramBotClient botClient, Update update, Cancel
             await botClient.AnswerCallbackQuery(callback.Id);
             await botClient.SendMessage(requester, "Розпочинаємо заново. Як вас звати?");
             return;
+        }
+
+        if (data.StartsWith("form_accept") || data.StartsWith("form_reject"))
+        {
+            var callerId = callback.From!.Id;
+            if (!adminChatIds.Contains(callerId))
+            {
+                await botClient.AnswerCallbackQuery(callback.Id, "Тільки адміністратор може схвалювати або відхиляти заявку.");
+                return;
+            }
         }
 
         var parts = data.Split('_');
