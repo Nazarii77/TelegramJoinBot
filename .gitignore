@@ -114,3 +114,4 @@ obj/Debug/net8.0/TelegramJoinBot.AssemblyInfo.cs
 obj/Debug/net8.0/TelegramJoinBot.AssemblyInfoInputs.cache
 obj/Debug/net8.0/TelegramJoinBot.dll
 obj/Debug/net8.0/TelegramJoinBot.pdb
+Dockerfile
