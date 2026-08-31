@@ -90,6 +90,7 @@ async Task HandleUpdateAsync(ITelegramBotClient botClient, Update update, Cancel
         var requesterId = joinRequest.From.Id;
         var joinState = users.ContainsKey(requesterId) ? users[requesterId] : null;
         var requestTime = DateTime.UtcNow.AddHours(3);
+        var profileUsername = joinState?.Username ?? joinRequest.From.Username;
 
         var adminButtons = new List<IEnumerable<InlineKeyboardButton>>
         {
@@ -106,20 +107,18 @@ async Task HandleUpdateAsync(ITelegramBotClient botClient, Update update, Cancel
             }
         };
 
-        var profileUrl = !string.IsNullOrWhiteSpace(joinState?.Username)
-            ? $"https://t.me/{joinState.Username.TrimStart('@')}"
-            : null;
+        var profileUrl = !string.IsNullOrWhiteSpace(profileUsername)
+            ? $"https://t.me/{profileUsername.TrimStart('@')}"
+            : $"tg://user?id={requesterId}";
 
-        if (!string.IsNullOrWhiteSpace(profileUrl))
+        Console.WriteLine($"Adding profile button for requester {requesterId}: username={profileUsername ?? "<none>"}, url={profileUrl}");
+        adminButtons.Add(new[]
         {
-            adminButtons.Add(new[]
-            {
-                InlineKeyboardButton.WithUrl(
-                    "👤 Відкрити профіль",
-                    profileUrl
-                )
-            });
-        }
+            InlineKeyboardButton.WithUrl(
+                "👤 Відкрити профіль",
+                profileUrl
+            )
+        });
 
         var caption = joinState is not null
             ? $"📩 Нова заявка на приєднання:\n\n" +
@@ -332,6 +331,7 @@ async Task HandleUpdateAsync(ITelegramBotClient botClient, Update update, Cancel
         {
             try
             {
+                Console.WriteLine($"Creating invite link for photo flow, user {userId}, group {groupId}.");
                 var invite = await botClient.CreateChatInviteLink(
                     new ChatId(groupId),
                     name: "Заявка через бота",
@@ -339,15 +339,21 @@ async Task HandleUpdateAsync(ITelegramBotClient botClient, Update update, Cancel
                     createsJoinRequest: true,
                     cancellationToken: cancellationToken);
                 joinUrl = invite.InviteLink;
+                Console.WriteLine($"Invite link created for photo flow: {joinUrl}");
             }
             catch (Telegram.Bot.Exceptions.ApiRequestException ex)
             {
                 Console.WriteLine($"Failed to create join invite link: {ex.Message}");
             }
         }
+        else
+        {
+            Console.WriteLine($"Using existing public link for photo flow, user {userId}: {joinUrl}");
+        }
 
         if (!string.IsNullOrWhiteSpace(joinUrl))
         {
+            Console.WriteLine($"Sending join button for photo flow to user {userId}: {joinUrl}");
             var keyboard = new InlineKeyboardMarkup(new[]
             {
                 new[]
@@ -372,6 +378,7 @@ async Task HandleUpdateAsync(ITelegramBotClient botClient, Update update, Cancel
         }
         else
         {
+            Console.WriteLine($"Skipping join button for photo flow because joinUrl is empty for user {userId}.");
             var keyboard = new InlineKeyboardMarkup(new[]
             {
                 new[]
@@ -404,6 +411,7 @@ async Task HandleUpdateAsync(ITelegramBotClient botClient, Update update, Cancel
         {
             try
             {
+                Console.WriteLine($"Creating invite link for document flow, user {userId}, group {groupId}.");
                 var invite = await botClient.CreateChatInviteLink(
                     new ChatId(groupId),
                     name: "Заявка через бота",
@@ -411,15 +419,21 @@ async Task HandleUpdateAsync(ITelegramBotClient botClient, Update update, Cancel
                     createsJoinRequest: true,
                     cancellationToken: cancellationToken);
                 joinUrl = invite.InviteLink;
+                Console.WriteLine($"Invite link created for document flow: {joinUrl}");
             }
             catch (Telegram.Bot.Exceptions.ApiRequestException ex)
             {
                 Console.WriteLine($"Failed to create join invite link: {ex.Message}");
             }
         }
+        else
+        {
+            Console.WriteLine($"Using existing public link for document flow, user {userId}: {joinUrl}");
+        }
 
         if (!string.IsNullOrWhiteSpace(joinUrl))
         {
+            Console.WriteLine($"Sending join button for document flow to user {userId}: {joinUrl}");
             var keyboard = new InlineKeyboardMarkup(new[]
             {
                 new[]
@@ -444,6 +458,7 @@ async Task HandleUpdateAsync(ITelegramBotClient botClient, Update update, Cancel
         }
         else
         {
+            Console.WriteLine($"Skipping join button for document flow because joinUrl is empty for user {userId}.");
             var keyboard = new InlineKeyboardMarkup(new[]
             {
                 new[]
